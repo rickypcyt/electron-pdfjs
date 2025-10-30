@@ -3,24 +3,32 @@ import * as path from 'path';
 
 let mainWindow: BrowserWindow | null = null;
 
+const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+const preloadPath = isDev 
+  ? path.join(__dirname, 'preload.js')
+  : path.join(__dirname, 'dist/preload.js');
+
 const createWindow = (): void => {
   // Create the browser window.
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: preloadPath,
       nodeIntegration: false,
-      contextIsolation: true
+      contextIsolation: true,
+      webSecurity: !isDev
     },
   });
 
-  // and load the index.html of the app.
-  mainWindow.loadFile(path.join(__dirname, 'index.html'));
-
-  // Open the DevTools in development mode.
-  if (process.env.NODE_ENV === 'development') {
+  // Load the app
+  if (isDev) {
+    // In development, load from Vite dev server
+    mainWindow.loadURL('http://localhost:5173');
     mainWindow.webContents.openDevTools();
+  } else {
+    // In production, load the built app
+    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 
   // Handle file open dialog
