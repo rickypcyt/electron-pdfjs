@@ -1,0 +1,17 @@
+{
+  "name": "electron-pdfjs",
+  "version": "1.0.0",
+ "main": "dist/index.cjs",
+  "type": "commonjs",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest",
+    "electron": "^39.0.0",
+    "typescript": "^5.2.2"
+  },
+  "scripts": {
+    "build": "bun run tsc",
+    "start": "bun run tsc && bun run electron ."
+  }
+}
+
