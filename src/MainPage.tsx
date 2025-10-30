@@ -1,11 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?worker';
+
+// Set the worker source
+if (typeof window !== 'undefined') {
+  window.pdfjsLib = pdfjsLib;
+  // Use the worker imported via Vite's worker plugin
+  pdfjsLib.GlobalWorkerOptions.workerPort = new pdfjsWorker();
+}
 
 declare global {
   interface Window {
     electronAPI: {
       openPdf: () => Promise<string | null>;
     };
+    pdfjsLib: typeof import('pdfjs-dist');
   }
 }
 
@@ -20,10 +29,8 @@ const MainPage = () => {
   const viewerContainerRef = useRef<HTMLDivElement>(null);
   const pdfInstance = useRef<any>(null);
 
-  // Initialize PDF.js worker
-  useEffect(() => {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-  }, []);
+  // No need for additional worker initialization
+  // The worker is already set up above
 
   const renderPage = async (pageNum: number, container: HTMLElement) => {
     if (!pdfInstance.current) return;
