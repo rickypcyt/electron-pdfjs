@@ -1,18 +1,18 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "commonjs",
+    "target": "ESNext",
+    "module": "ESNext",
     "moduleResolution": "node",
     "sourceMap": true,
-    "outDir": "dist",
+    "outDir": "dist-electron",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "lib": ["es2020", "dom"],
+    "lib": ["ESNext", "DOM"],
     "types": ["node", "electron"]
   },
-  "include": ["**/*.ts"],
+  "include": ["electron/**/*.ts"],
   "exclude": ["node_modules"]
 }

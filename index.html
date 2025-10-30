@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline';">
+    <title>PDF.js Electron</title>
+    <style>
+        :root {
+            --primary-color: #2196F3;
+            --background-color: #f0f0f0;
+            --toolbar-height: 50px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: var(--background-color);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .toolbar {
+            background-color: #333;
+            color: white;
+            height: var(--toolbar-height);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            -webkit-app-region: drag;
+        }
+
+        .toolbar button {
+            -webkit-app-region: no-drag;
+            background: var(--primary-color);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            font-size: 14px;
+        }
+
+        .toolbar button:hover {
+            opacity: 0.9;
+        }
+
+        .toolbar-title {
+            flex: 1;
+            margin-left: 20px;
+            font-size: 16px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        #viewerContainer {
+            flex: 1;
+            overflow: auto;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            background-color: #525659;
+        }
+
+        #pdfViewer {
+            background: white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .page {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .page:last-child {
+            margin-bottom: 0;
+        }
+
+        .loading {
+            color: white;
+            font-size: 18px;
+            margin-top: 50px;
+        }
+
+        .error {
+            color: #ff6b6b;
+            text-align: center;
+            padding: 20px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <button id="openFile">Open PDF</button>
+        <div class="toolbar-title" id="title">PDF.js Electron Viewer</div>
+    </div>
+    
+    <div id="viewerContainer">
+        <div id="loading" class="loading">Loading PDF.js...</div>
+    </div>
+
+    <script>
+        // Load PDF.js
+        const pdfjsLib = require('pdfjs-dist');
+        
+        // Set worker path
+        pdfjsLib.GlobalWorkerOptions.workerSrc = require.resolve('pdfjs-dist/build/pdf.worker.min.js');
+        
+        const { ipcRenderer } = require('electron');
+        
+        // DOM elements
+        const viewerContainer = document.getElementById('viewerContainer');
+        const loadingElement = document.getElementById('loading');
+        const titleElement = document.getElementById('title');
+        const openFileBtn = document.getElementById('openFile');
+        
+        // Open file button click handler
+        openFileBtn.addEventListener('click', async () => {
+            try {
+                const filePath = await ipcRenderer.invoke('open-pdf');
+                if (filePath) {
+                    loadPdf(filePath);
+                }
+            } catch (error) {
+                showError(error);
+            }
+        });
+        
+        // Load and render PDF
+        async function loadPdf(filePath) {
+            try {
+                loadingElement.textContent = 'Loading PDF...';
+                
+                // Load the PDF file
+                const loadingTask = pdfjsLib.getDocument(filePath);
+                const pdf = await loadingTask.promise;
+                
+                // Update title
+                const fileName = filePath.split('/').pop() || 'PDF Document';
+                document.title = `${fileName} - PDF.js Electron`;
+                titleElement.textContent = fileName;
+                
+                // Clear previous content
+                viewerContainer.innerHTML = '';
+                
+                // Render each page
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const viewport = page.getViewport({ scale: 1.5 });
+                    
+                    // Create page container
+                    const pageContainer = document.createElement('div');
+                    pageContainer.className = 'page';
+                    
+                    // Create canvas for the page
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+                    
+                    // Add canvas to page container
+                    pageContainer.appendChild(canvas);
+                    viewerContainer.appendChild(pageContainer);
+                    
+                    // Render the page
+                    await page.render({
+                        canvasContext: context,
+                        viewport: viewport
+                    }).promise;
+                }
+                
+                // Hide loading indicator
+                loadingElement.style.display = 'none';
+                
+            } catch (error) {
+                showError(error);
+            }
+        }
+        
+        // Show error message
+        function showError(error) {
+            console.error('Error:', error);
+            loadingElement.style.display = 'none';
+            
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.textContent = `Error: ${error.message || 'Failed to load PDF'}`;
+            
+            viewerContainer.innerHTML = '';
+            viewerContainer.appendChild(errorDiv);
+        }
+        
+        // Initial load: Open file dialog when window loads
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const filePath = await ipcRenderer.invoke('open-pdf');
+                if (filePath) {
+                    loadPdf(filePath);
+                } else {
+                    loadingElement.textContent = 'No file selected. Click "Open PDF" to view a document.';
+                }
+            } catch (error) {
+                showError(error);
+            }
+        });
+    </script>
+</body>
+</html>
